@@ -9,9 +9,9 @@
 
 #define NUMPROCS 4
 #define PAGESIZE 4096
-#define PHISICALMEMORY 12*PAGESIZE 
-#define TOTFRAMES PHISICALMEMORY/PAGESIZE
-#define RESIDENTSETSIZE PHISICALMEMORY/(PAGESIZE*NUMPROCS)
+#define PHYSICALMEMORY 12*PAGESIZE 
+#define TOTALFRAMES PHISICALMEMORY/PAGESIZE
+#define RESIDENTSETSIZE PHYSICALMEMORY/(PAGESIZE*NUMPROCS)
 
 extern char *base;
 extern int framesbegin;
@@ -30,9 +30,8 @@ int getfifo();
 int pagefault(char *vaddress)
 {
     int i;
-    int frame,vframe; 
+    int frame, vframe; 
     long pag_a_expulsar;
-    int fd;
     char buffer[PAGESIZE];
     int pag_del_proceso;
 
@@ -59,31 +58,31 @@ int pagefault(char *vaddress)
     if(i>=RESIDENTSETSIZE)
     {
 		// Buscar una página a expulsar
-        long fr = getfifo();
+        pag_a_expulsar = getfifo();
 		
 		// Poner el bitde presente en 0 en la tabla de páginas
-        (ptbr + fr)->presente = 0;
+        (ptbr + pag_a_expulsar)->presente = 0;
         
         // Si la página ya fue modificada, grábala en disco
-        if((ptbr +fr)->modificado)
+        if((ptbr +pag_a_expulsar)->modificado)
         {
 			// Escribe el frame de la página en el archivo de respaldo y pon en 0 el bit de modificado
-            saveframe((ptbr + fr)->framenumber);
-            (ptbr + fr)->modificado = 0;
+            saveframe((ptbr + pag_a_expulsar)->framenumber);
+            (ptbr + pag_a_expulsar)->modificado = 0;
         }
 		
         // Busca un frame virtual en memoria secundaria
-        int vframe = searchvirtualframe();
+        vframe = searchvirtualframe();
 		// Si no hay frames virtuales en memoria secundaria regresa error
         if(vframe == -1)
 		{
             return(-1);
         }
         // Copia el frame a memoria secundaria, actualiza la tabla de páginas y libera el marco de la memoria principal
-        copyframe((ptbr + fr)->framenumber, vframe);
-        frame = (ptbr + fr)->framenumber;
+        copyframe((ptbr + pag_a_expulsar)->framenumber, vframe);
+        frame = (ptbr + pag_a_expulsar)->framenumber;
         (systemframetable + frame)->assigned = 0;
-        (ptbr + fr)->framenumber = vframe;
+        (ptbr + pag_a_expulsar)->framenumber = vframe;
     }
 
     // Busca un marco físico libre en el sistema
@@ -130,34 +129,34 @@ int getfreeframe(){
 }
 
 int searchvirtualframe(){
-    int j;
+    int i;
 
-    for(j = (systemframetablesize + framesbegin); j < (systemframetablesize*2 + framesbegin); j++){
-        if(!(systemframetable + j)->assigned){
-            (systemframetable + j)->assigned = 1;
+    for(i = (systemframetablesize + framesbegin); i < (systemframetablesize*2 + framesbegin); i++){
+        if(!(systemframetable + i)->assigned){
+            (systemframetable + i)->assigned = 1;
             break;
         }
     }
-    if(j < (systemframetablesize*2 + framesbegin)){
-        return j;
+    if(i < (systemframetablesize*2 + framesbegin)){
+        return i;
     }
     else{
-        j = -1;
-        return j;
+        i = -1;
+        return i;
     }
 }
 
 int getfifo(){
     int fifo = -1;
     unsigned long time = -1;
-    unsigned long t_time = 0;
+    unsigned long _time_ = 0;
 
-    for(int j = 0; j < ptlr; j++){
-        if((ptbr + j)->presente){
-            t_time = (ptbr + j)->tarrived;
-            if(t_time < time){
-                fifo = j;
-                time = t_time;
+    for(int i = 0; i < ptlr; i++){
+        if((ptbr + i)->presente){
+            _time_ = (ptbr + i)->tarrived;
+            if(_time_ < time){
+                fifo = i;
+                time = _time_;
             }
         }
     }
